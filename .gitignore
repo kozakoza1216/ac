@@ -1,0 +1,8 @@
+# Godot 4+ generated cache and import data
+.godot/
+.import/
+export.cfg
+export_presets.cfg
+
+# Imported assets metadata (regenerated automatically)
+*.import

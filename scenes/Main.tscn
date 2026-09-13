@@ -1,0 +1,174 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(60, 1, 60)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+size = Vector3(60, 1, 60)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.25, 0.28, 0.32, 1)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.5
+height = 1.8
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+radius = 0.5
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_player"]
+albedo_color = Color(0.9, 0.3, 0.2, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_obstacle"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_obstacle"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="StandardMaterial3D" id="Mat_obstacle"]
+albedo_color = Color(0.55, 0.58, 0.62, 1)
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
+sky_top_color = Color(0.28, 0.45, 0.75, 1)
+sky_horizon_color = Color(0.75, 0.8, 0.85, 1)
+ground_bottom_color = Color(0.2, 0.2, 0.22, 1)
+ground_horizon_color = Color(0.6, 0.6, 0.6, 1)
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("SkyMat")
+
+[sub_resource type="Environment" id="Env_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+ambient_light_source = 3
+ambient_light_sky_contribution = 1.0
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-45, -45, 0)
+shadow_enabled = true
+
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+position = Vector3(0, -0.5, 0)
+mesh = SubResource("BoxMesh_ground")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+position = Vector3(0, -0.5, 0)
+shape = SubResource("BoxShape3D_ground")
+
+[node name="Obstacles" type="Node3D" parent="."]
+
+[node name="Obstacle1" type="StaticBody3D" parent="Obstacles"]
+position = Vector3(8, 1, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Obstacles/Obstacle1"]
+mesh = SubResource("BoxMesh_obstacle")
+surface_material_override/0 = SubResource("Mat_obstacle")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Obstacles/Obstacle1"]
+shape = SubResource("BoxShape3D_obstacle")
+
+[node name="Obstacle2" type="StaticBody3D" parent="Obstacles"]
+position = Vector3(-8, 1, 6)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Obstacles/Obstacle2"]
+mesh = SubResource("BoxMesh_obstacle")
+surface_material_override/0 = SubResource("Mat_obstacle")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Obstacles/Obstacle2"]
+shape = SubResource("BoxShape3D_obstacle")
+
+[node name="Obstacle3" type="StaticBody3D" parent="Obstacles"]
+position = Vector3(0, 1, -12)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Obstacles/Obstacle3"]
+mesh = SubResource("BoxMesh_obstacle")
+surface_material_override/0 = SubResource("Mat_obstacle")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Obstacles/Obstacle3"]
+shape = SubResource("BoxShape3D_obstacle")
+
+[node name="Obstacle4" type="StaticBody3D" parent="Obstacles"]
+position = Vector3(14, 1, -8)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Obstacles/Obstacle4"]
+mesh = SubResource("BoxMesh_obstacle")
+surface_material_override/0 = SubResource("Mat_obstacle")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Obstacles/Obstacle4"]
+shape = SubResource("BoxShape3D_obstacle")
+
+[node name="Player" type="CharacterBody3D" parent="."]
+position = Vector3(0, 1, 0)
+script = ExtResource("1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Player"]
+mesh = SubResource("CapsuleMesh_player")
+surface_material_override/0 = SubResource("Mat_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="CameraPivot" type="Node3D" parent="Player"]
+position = Vector3(0, 1.2, 0)
+
+[node name="SpringArm3D" type="SpringArm3D" parent="Player/CameraPivot"]
+spring_length = 7.0
+collision_mask = 1
+
+[node name="Camera3D" type="Camera3D" parent="Player/CameraPivot/SpringArm3D"]
+current = true
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Control" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="BoostLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 4.0
+offset_right = 200.0
+offset_bottom = 24.0
+text = "BOOST"
+
+[node name="BoostBar" type="ProgressBar" parent="HUD/Control"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 24.0
+offset_top = 26.0
+offset_right = 324.0
+offset_bottom = 46.0
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="StateLabel" type="Label" parent="HUD/Control"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 24.0
+offset_top = 52.0
+offset_right = 300.0
+offset_bottom = 74.0
+text = "-"
+
+[node name="InfoLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 560.0
+offset_right = 620.0
+offset_bottom = 700.0
+text = "W/A/S/D: move    Left/Right: turn    Up/Down: look\nSpace (hold while moving): boost dash\nRelease during dash, then re-press quickly (holdable): boost jump\nSpace (short tap while standing still): jump (no gauge cost)"
