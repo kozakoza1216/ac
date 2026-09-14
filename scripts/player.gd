@@ -21,8 +21,8 @@ enum State { NORMAL, BOOST_DASH, AIR_BOOST }
 
 const GRAVITY := 32.0
 
-const WALK_ACCEL := 10.0
-const WALK_MAX_SPEED := 2.5
+const WALK_ACCEL := 12.0
+const WALK_MAX_SPEED := 4.0
 const AIR_DAMPING := 1.5
 
 # Non-boosted air control (falling, or airborne with boost not held) is
@@ -41,10 +41,15 @@ const AIR_BOOST_VERTICAL_ACCEL := 40.0
 const AIR_BOOST_VERTICAL_MAX_SPEED := 16.0
 
 const BOOST_GAUGE_MAX := 100.0
-const BOOST_DASH_DRAIN := 28.0
-const AIR_BOOST_DRAIN := 36.0
-const BOOST_REGEN := 22.0
-const BOOST_REGEN_DELAY := 0.4
+
+# Generator model: the gauge is a buffer between a constant generator
+# supply and whatever the boosters are actively drawing. Supply is always
+# being added; when a booster's draw is higher than the supply, the gauge
+# nets down, and the moment draw drops (partially or to zero) it nets back
+# up again -- no separate "regen delay" state needed.
+const BOOST_SUPPLY := 24.0
+const BOOST_DASH_DRAIN := 52.0
+const AIR_BOOST_DRAIN := 60.0
 
 const REBOOST_WINDOW := 0.35
 
@@ -59,10 +64,14 @@ const PITCH_MAX := 0.87 # ~ 50 deg
 
 var state: int = State.NORMAL
 var boost_gauge: float = BOOST_GAUGE_MAX
-var boost_regen_timer: float = 0.0
 
 var awaiting_reboost: bool = false
 var reboost_deadline: float = -1.0
+
+# True right after leaving a boost dash on the ground, while its leftover
+# momentum is still easing out; distinguishes that from an ordinary walk
+# stop (which halts instantly).
+var _coasting_from_dash: bool = false
 
 var cam_pitch: float = 0.0
 
@@ -112,9 +121,11 @@ func _physics_process(delta: float) -> void:
 		if has_move_input and boost_held and boost_gauge > 0.0:
 			state = State.BOOST_DASH
 		else:
-			if state == State.BOOST_DASH and boost_just_released:
-				awaiting_reboost = true
-				reboost_deadline = _t + REBOOST_WINDOW
+			if state == State.BOOST_DASH:
+				if boost_just_released:
+					awaiting_reboost = true
+					reboost_deadline = _t + REBOOST_WINDOW
+				_coasting_from_dash = true
 			state = State.NORMAL
 	else:
 		if boost_held and boost_gauge > 0.0:
@@ -122,16 +133,21 @@ func _physics_process(delta: float) -> void:
 		else:
 			state = State.NORMAL
 
+	var boost_draw := 0.0
+
 	match state:
 		State.NORMAL:
 			if was_on_floor:
 				if has_move_input:
 					h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * delta)
-				elif boost_regen_timer > 0.0:
+					_coasting_from_dash = false
+				elif _coasting_from_dash:
 					# Still bleeding off momentum from a boost dash that
 					# just ended on the ground -- an ordinary walking stop
 					# (below) is instant, but boost momentum eases out.
 					h_velocity = h_velocity.move_toward(Vector3.ZERO, BOOST_DAMPING_AFTER_RELEASE * delta)
+					if h_velocity.length() < 0.05:
+						_coasting_from_dash = false
 				else:
 					h_velocity = Vector3.ZERO
 			else:
@@ -142,8 +158,7 @@ func _physics_process(delta: float) -> void:
 
 		State.BOOST_DASH:
 			h_velocity = h_velocity.move_toward(move_dir * BOOST_MAX_SPEED, BOOST_ACCEL * delta)
-			boost_gauge = maxf(0.0, boost_gauge - BOOST_DASH_DRAIN * delta)
-			boost_regen_timer = BOOST_REGEN_DELAY
+			boost_draw = BOOST_DASH_DRAIN
 
 		State.AIR_BOOST:
 			# Boost dash and boost jump combined: always thrust upward,
@@ -151,8 +166,12 @@ func _physics_process(delta: float) -> void:
 			velocity.y = minf(velocity.y + AIR_BOOST_VERTICAL_ACCEL * delta, AIR_BOOST_VERTICAL_MAX_SPEED)
 			var h_target := move_dir * BOOST_MAX_SPEED if has_move_input else Vector3.ZERO
 			h_velocity = h_velocity.move_toward(h_target, BOOST_ACCEL * delta)
-			boost_gauge = maxf(0.0, boost_gauge - AIR_BOOST_DRAIN * delta)
-			boost_regen_timer = BOOST_REGEN_DELAY
+			boost_draw = AIR_BOOST_DRAIN
+
+	# Generator supply vs. booster draw, applied continuously regardless of
+	# state -- draw above supply nets the gauge down, draw below (or zero)
+	# nets it back up.
+	boost_gauge = clampf(boost_gauge + (BOOST_SUPPLY - boost_draw) * delta, 0.0, BOOST_GAUGE_MAX)
 
 	velocity.x = h_velocity.x
 	velocity.z = h_velocity.z
@@ -175,11 +194,6 @@ func _physics_process(delta: float) -> void:
 		else:
 			velocity.x = 0.0
 			velocity.z = 0.0
-
-	if boost_regen_timer > 0.0:
-		boost_regen_timer = maxf(0.0, boost_regen_timer - delta)
-	elif state == State.NORMAL:
-		boost_gauge = minf(BOOST_GAUGE_MAX, boost_gauge + BOOST_REGEN * delta)
 
 	_boost_prev_held = boost_held
 	_update_hud()

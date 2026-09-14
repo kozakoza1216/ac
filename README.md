@@ -45,9 +45,15 @@ The boost button is overloaded, the same way it is in the reference games:
   it snaps straight to walking speed instead of ramping up, otherwise it
   goes to zero. Landing mid air-boost is the one case that keeps the
   momentum, instead of getting arrested.
+- **Boost gauge**: modeled as a generator, not a simple meter. The
+  generator supplies energy at a constant rate at all times; the boosters
+  draw from it whenever boost-dashing or air-boosting. Draw above supply
+  nets the gauge down, draw below supply (including zero, whenever you're
+  not boosting) nets it back up — there's no separate regen delay/cooldown,
+  it's just supply minus draw, continuously.
 
 All logic lives in `scripts/player.gd`; tunable constants (accel, top
-speeds, gauge drain/regen, timing windows) are at the top of the file.
+speeds, gauge supply/draw, timing windows) are at the top of the file.
 
 This is scoped to movement/inertia/boost only for now — no weapons, enemies,
 or stages yet.
