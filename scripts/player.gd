@@ -25,6 +25,12 @@ const WALK_ACCEL := 10.0
 const WALK_MAX_SPEED := 2.5
 const AIR_DAMPING := 1.5
 
+# Non-boosted air control (falling, or airborne with boost not held) is
+# deliberately independent of the (slow) walk speed above, so you can
+# still steer around in the air without needing to spend gauge.
+const AIR_CONTROL_ACCEL := 8.0
+const AIR_CONTROL_MAX_SPEED := 6.0
+
 const BOOST_ACCEL := 46.0
 const BOOST_MAX_SPEED := 24.0
 const BOOST_DAMPING_AFTER_RELEASE := 2.0
@@ -130,7 +136,7 @@ func _physics_process(delta: float) -> void:
 					h_velocity = Vector3.ZERO
 			else:
 				if has_move_input:
-					h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * 0.5 * delta)
+					h_velocity = h_velocity.move_toward(move_dir * AIR_CONTROL_MAX_SPEED, AIR_CONTROL_ACCEL * delta)
 				else:
 					h_velocity = h_velocity.move_toward(Vector3.ZERO, AIR_DAMPING * delta)
 
@@ -160,9 +166,15 @@ func _physics_process(delta: float) -> void:
 
 	if is_on_floor() and not was_on_floor and state == State.NORMAL:
 		# Not boosting: momentum is arrested the instant the legs touch
-		# down, instead of bleeding off gradually.
-		velocity.x = 0.0
-		velocity.z = 0.0
+		# down, instead of bleeding off gradually. If you're already
+		# holding a direction at that instant, skip the inertia ramp-up
+		# entirely and snap straight to walking speed.
+		if has_move_input:
+			velocity.x = move_dir.x * WALK_MAX_SPEED
+			velocity.z = move_dir.z * WALK_MAX_SPEED
+		else:
+			velocity.x = 0.0
+			velocity.z = 0.0
 
 	if boost_regen_timer > 0.0:
 		boost_regen_timer = maxf(0.0, boost_regen_timer - delta)
