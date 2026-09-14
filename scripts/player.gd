@@ -25,11 +25,11 @@ const WALK_ACCEL := 18.0
 const WALK_MAX_SPEED := 10.0
 const AIR_DAMPING := 3.0
 
-# Non-boosted air control (falling, or airborne with boost not held) is
-# deliberately independent of the (slow) walk speed above, so you can
-# still steer around in the air without needing to spend gauge.
+# Non-boosted air control (falling, or airborne with boost not held) tops
+# out at the same speed as walking, just with its own (slightly less
+# responsive) acceleration -- no gauge needed either way.
 const AIR_CONTROL_ACCEL := 14.0
-const AIR_CONTROL_MAX_SPEED := 6.0
+const AIR_CONTROL_MAX_SPEED := WALK_MAX_SPEED
 
 const BOOST_ACCEL := 58.0
 const BOOST_MAX_SPEED := 24.0
