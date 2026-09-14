@@ -22,7 +22,7 @@ enum State { NORMAL, BOOST_DASH, AIR_BOOST }
 const GRAVITY := 32.0
 
 const WALK_ACCEL := 18.0
-const WALK_MAX_SPEED := 6.5
+const WALK_MAX_SPEED := 10.0
 const AIR_DAMPING := 3.0
 
 # Non-boosted air control (falling, or airborne with boost not held) is
