@@ -123,7 +123,7 @@ shape = SubResource("CapsuleShape3D_player")
 position = Vector3(0, 1.2, 0)
 
 [node name="SpringArm3D" type="SpringArm3D" parent="Player/CameraPivot"]
-spring_length = 7.0
+spring_length = 3.5
 collision_mask = 1
 
 [node name="Camera3D" type="Camera3D" parent="Player/CameraPivot/SpringArm3D"]

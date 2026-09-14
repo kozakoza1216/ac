@@ -11,7 +11,8 @@ extends CharacterBody3D
 ##     - release during a dash, -> boost jump (also holdable; drains gauge)
 ##       then press again within
 ##       a short window
-##     - short tap while standing still -> ordinary jump (no gauge cost)
+##     - press while standing still -> jump fires instantly (no gauge cost);
+##       keep holding and it turns into a boost jump (drains gauge)
 
 enum State { NORMAL, BOOST_DASH, BOOST_JUMP }
 
@@ -37,7 +38,6 @@ const BOOST_JUMP_DRAIN := 36.0
 const BOOST_REGEN := 22.0
 const BOOST_REGEN_DELAY := 0.4
 
-const SHORT_PRESS_TIME := 0.18
 const REBOOST_WINDOW := 0.35
 
 const TURN_SPEED := 2.6
@@ -60,7 +60,6 @@ var cam_pitch: float = 0.0
 
 var _t: float = 0.0
 var _boost_prev_held: bool = false
-var _boost_press_time: float = 0.0
 
 
 func _physics_process(delta: float) -> void:
@@ -89,13 +88,11 @@ func _physics_process(delta: float) -> void:
 		elif _t > reboost_deadline:
 			awaiting_reboost = false
 
+	var was_on_floor := is_on_floor()
 	var h_velocity := Vector3(velocity.x, 0.0, velocity.z)
 
 	match state:
 		State.NORMAL:
-			if boost_just_pressed:
-				_boost_press_time = _t
-
 			if has_move_input:
 				h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * delta)
 			else:
@@ -103,10 +100,13 @@ func _physics_process(delta: float) -> void:
 
 			if boost_held and has_move_input and boost_gauge > 0.0:
 				state = State.BOOST_DASH
-			elif boost_just_released and not has_move_input:
-				var held_time := _t - _boost_press_time
-				if held_time < SHORT_PRESS_TIME and is_on_floor():
-					velocity.y = JUMP_VELOCITY
+			elif boost_just_pressed and not has_move_input and was_on_floor:
+				# Jump fires the instant the button is pressed, no waiting to
+				# see how long it's held. If boost is still held on later
+				# frames, the BOOST_JUMP branch below keeps it going as a
+				# boost jump; a quick tap just leaves this one free impulse.
+				velocity.y = JUMP_VELOCITY
+				state = State.BOOST_JUMP
 
 		State.BOOST_DASH:
 			if boost_held and has_move_input and boost_gauge > 0.0:
@@ -139,12 +139,18 @@ func _physics_process(delta: float) -> void:
 	velocity.x = h_velocity.x
 	velocity.z = h_velocity.z
 
-	if not is_on_floor():
+	if not was_on_floor:
 		velocity.y -= GRAVITY * delta
 	elif velocity.y < 0.0:
 		velocity.y = -1.0
 
 	move_and_slide()
+
+	if is_on_floor() and not was_on_floor and state == State.NORMAL:
+		# Not boosting: momentum is arrested the instant the legs touch
+		# down, instead of bleeding off gradually like WALK_DAMPING would.
+		velocity.x = 0.0
+		velocity.z = 0.0
 
 	if boost_regen_timer > 0.0:
 		boost_regen_timer = maxf(0.0, boost_regen_timer - delta)
