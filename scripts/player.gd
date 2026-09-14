@@ -7,20 +7,22 @@ extends CharacterBody3D
 ##   Left / Right   : turn body (yaw)
 ##   Up / Down      : look camera up / down (pitch)
 ##   Space          : the single "boost" button, overloaded as follows:
-##     - hold while moving      -> boost dash (drains gauge while held)
-##     - release during a dash, -> boost jump (also holdable; drains gauge)
-##       then press again within
-##       a short window
-##     - press while standing still -> jump fires instantly (no gauge cost);
-##       keep holding and it turns into a boost jump (drains gauge)
+##     - hold while moving on the ground -> boost dash (drains gauge)
+##     - press while standing still      -> jump fires instantly (free,
+##       no gauge cost); keep holding boost (or press it again once
+##       airborne) to keep boosting
+##     - whenever airborne, holding boost applies both vertical thrust
+##       and horizontal thrust toward your movement input at the same
+##       time -- boost dash and boost jump combined into one air boost
+##     - release boost mid ground-dash, then press it again within a
+##       short window, to launch off the ground into an air boost
 
-enum State { NORMAL, BOOST_DASH, BOOST_JUMP }
+enum State { NORMAL, BOOST_DASH, AIR_BOOST }
 
 const GRAVITY := 20.0
 
 const WALK_ACCEL := 18.0
 const WALK_MAX_SPEED := 7.0
-const WALK_DAMPING := 10.0
 const AIR_DAMPING := 1.5
 
 const BOOST_ACCEL := 40.0
@@ -29,12 +31,12 @@ const BOOST_DAMPING_AFTER_RELEASE := 2.0
 
 const JUMP_VELOCITY := 8.5
 
-const BOOST_JUMP_ACCEL := 26.0
-const BOOST_JUMP_MAX_SPEED := 15.0
+const AIR_BOOST_VERTICAL_ACCEL := 26.0
+const AIR_BOOST_VERTICAL_MAX_SPEED := 15.0
 
 const BOOST_GAUGE_MAX := 100.0
 const BOOST_DASH_DRAIN := 28.0
-const BOOST_JUMP_DRAIN := 36.0
+const AIR_BOOST_DRAIN := 36.0
 const BOOST_REGEN := 22.0
 const BOOST_REGEN_DELAY := 0.4
 
@@ -76,65 +78,75 @@ func _physics_process(delta: float) -> void:
 	var boost_just_pressed := boost_held and not _boost_prev_held
 	var boost_just_released := (not boost_held) and _boost_prev_held
 
-	# Re-boost window: pressing boost again shortly after releasing it during
-	# a dash triggers a boost jump instead of re-entering the dash. This is
-	# checked before the state machine below so it takes priority over a
-	# fresh dash starting on the same frame.
-	if awaiting_reboost:
-		if boost_just_pressed:
-			awaiting_reboost = false
-			if _t <= reboost_deadline and boost_gauge > 0.0:
-				state = State.BOOST_JUMP
-		elif _t > reboost_deadline:
-			awaiting_reboost = false
-
 	var was_on_floor := is_on_floor()
 	var h_velocity := Vector3(velocity.x, 0.0, velocity.z)
 
+	# Free jump: a press while standing still on the ground always fires
+	# immediately, no gauge cost. Whatever happens with boost afterward
+	# (held through, or released and pressed again once airborne) is
+	# handled uniformly by the airborne air-boost rule below.
+	if was_on_floor and not has_move_input and boost_just_pressed:
+		velocity.y = JUMP_VELOCITY
+
+	# Re-boost window: release boost mid ground-dash, then press it again
+	# quickly to launch off the ground into an air boost.
+	if awaiting_reboost:
+		if boost_just_pressed:
+			awaiting_reboost = false
+			if _t <= reboost_deadline and boost_gauge > 0.0 and was_on_floor:
+				velocity.y = JUMP_VELOCITY
+		elif _t > reboost_deadline:
+			awaiting_reboost = false
+
+	# Resolve this frame's state fresh from grounded-ness, input and the
+	# boost button -- boosting works the same regardless of how you ended
+	# up airborne (jumped, dashed off a ledge, fell, pressed boost again
+	# after already letting go of it once).
+	if was_on_floor:
+		if has_move_input and boost_held and boost_gauge > 0.0:
+			state = State.BOOST_DASH
+		else:
+			if state == State.BOOST_DASH and boost_just_released:
+				awaiting_reboost = true
+				reboost_deadline = _t + REBOOST_WINDOW
+			state = State.NORMAL
+	else:
+		if boost_held and boost_gauge > 0.0:
+			state = State.AIR_BOOST
+		else:
+			state = State.NORMAL
+
 	match state:
 		State.NORMAL:
-			if has_move_input:
-				h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * delta)
+			if was_on_floor:
+				if has_move_input:
+					h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * delta)
+				elif boost_regen_timer > 0.0:
+					# Still bleeding off momentum from a boost dash that
+					# just ended on the ground -- an ordinary walking stop
+					# (below) is instant, but boost momentum eases out.
+					h_velocity = h_velocity.move_toward(Vector3.ZERO, BOOST_DAMPING_AFTER_RELEASE * delta)
+				else:
+					h_velocity = Vector3.ZERO
 			else:
-				h_velocity = h_velocity.move_toward(Vector3.ZERO, WALK_DAMPING * delta)
-
-			if boost_held and has_move_input and boost_gauge > 0.0:
-				state = State.BOOST_DASH
-			elif boost_just_pressed and not has_move_input and was_on_floor:
-				# Jump fires the instant the button is pressed, no waiting to
-				# see how long it's held. If boost is still held on later
-				# frames, the BOOST_JUMP branch below keeps it going as a
-				# boost jump; a quick tap just leaves this one free impulse.
-				velocity.y = JUMP_VELOCITY
-				state = State.BOOST_JUMP
+				if has_move_input:
+					h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * 0.5 * delta)
+				else:
+					h_velocity = h_velocity.move_toward(Vector3.ZERO, AIR_DAMPING * delta)
 
 		State.BOOST_DASH:
-			if boost_held and has_move_input and boost_gauge > 0.0:
-				h_velocity = h_velocity.move_toward(move_dir * BOOST_MAX_SPEED, BOOST_ACCEL * delta)
-				boost_gauge = maxf(0.0, boost_gauge - BOOST_DASH_DRAIN * delta)
-				boost_regen_timer = BOOST_REGEN_DELAY
-			else:
-				if boost_just_released:
-					awaiting_reboost = true
-					reboost_deadline = _t + REBOOST_WINDOW
-				# Boost released (or gauge ran out, or player stopped giving
-				# direction): keep sliding on the momentum built up, only
-				# bleeding off slowly, then hand back to normal movement.
-				h_velocity = h_velocity.move_toward(Vector3.ZERO, BOOST_DAMPING_AFTER_RELEASE * delta)
-				state = State.NORMAL
+			h_velocity = h_velocity.move_toward(move_dir * BOOST_MAX_SPEED, BOOST_ACCEL * delta)
+			boost_gauge = maxf(0.0, boost_gauge - BOOST_DASH_DRAIN * delta)
+			boost_regen_timer = BOOST_REGEN_DELAY
 
-		State.BOOST_JUMP:
-			if boost_held and boost_gauge > 0.0:
-				velocity.y = minf(velocity.y + BOOST_JUMP_ACCEL * delta, BOOST_JUMP_MAX_SPEED)
-				boost_gauge = maxf(0.0, boost_gauge - BOOST_JUMP_DRAIN * delta)
-				boost_regen_timer = BOOST_REGEN_DELAY
-			else:
-				state = State.NORMAL
-
-			if has_move_input:
-				h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * 0.5 * delta)
-			else:
-				h_velocity = h_velocity.move_toward(Vector3.ZERO, AIR_DAMPING * delta)
+		State.AIR_BOOST:
+			# Boost dash and boost jump combined: always thrust upward,
+			# and also thrust toward the movement input if there is any.
+			velocity.y = minf(velocity.y + AIR_BOOST_VERTICAL_ACCEL * delta, AIR_BOOST_VERTICAL_MAX_SPEED)
+			var h_target := move_dir * BOOST_MAX_SPEED if has_move_input else Vector3.ZERO
+			h_velocity = h_velocity.move_toward(h_target, BOOST_ACCEL * delta)
+			boost_gauge = maxf(0.0, boost_gauge - AIR_BOOST_DRAIN * delta)
+			boost_regen_timer = BOOST_REGEN_DELAY
 
 	velocity.x = h_velocity.x
 	velocity.z = h_velocity.z
@@ -148,7 +160,7 @@ func _physics_process(delta: float) -> void:
 
 	if is_on_floor() and not was_on_floor and state == State.NORMAL:
 		# Not boosting: momentum is arrested the instant the legs touch
-		# down, instead of bleeding off gradually like WALK_DAMPING would.
+		# down, instead of bleeding off gradually.
 		velocity.x = 0.0
 		velocity.z = 0.0
 
@@ -197,5 +209,5 @@ func _update_hud() -> void:
 				state_label.text = "-"
 			State.BOOST_DASH:
 				state_label.text = "BOOST DASH"
-			State.BOOST_JUMP:
-				state_label.text = "BOOST JUMP"
+			State.AIR_BOOST:
+				state_label.text = "AIR BOOST"

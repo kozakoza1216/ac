@@ -171,4 +171,4 @@ offset_left = 24.0
 offset_top = 560.0
 offset_right = 620.0
 offset_bottom = 700.0
-text = "W/A/S/D: move    Left/Right: turn    Up/Down: look\nSpace (hold while moving): boost dash\nRelease during dash, then re-press quickly (holdable): boost jump\nSpace (short tap while standing still): jump (no gauge cost)"
+text = "W/A/S/D: move    Left/Right: turn    Up/Down: look\nSpace (hold while moving on ground): boost dash\nSpace (press while standing still): jump (free)\nWhile airborne, hold Space: air boost (dash + jump combined)\nRelease during dash, then re-press quickly: launch into an air boost"

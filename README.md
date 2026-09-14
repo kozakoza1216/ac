@@ -14,21 +14,30 @@ Godot 4 (4.3+) project. Open `project.godot` in the Godot editor and run
 
 The boost button is overloaded, the same way it is in the reference games:
 
-- **Boost dash**: hold Space while moving. Can be held indefinitely (drains
-  the boost gauge while active).
-- **Boost jump**: while boost-dashing, release Space, then press it again
-  within a short window. Also holdable — keeps accelerating upward for as
-  long as it's held, draining the gauge.
-- **Jump**: pressing Space while standing still jumps instantly — it doesn't
-  wait to see how long you hold it. That initial hop costs no gauge. Keep
-  Space held past the jump and it turns into a boost jump (drains gauge,
-  holdable, same as above).
+- **Boost dash** (ground only): hold Space while moving. Can be held
+  indefinitely (drains the boost gauge while active).
+- **Air boost**: whenever you're airborne — jumped, dashed off a ledge,
+  mid-fall, doesn't matter how you got there — holding Space thrusts you
+  both upward *and* toward whatever direction you're moving, at the same
+  time. It's boost dash and boost jump combined into one move. No input
+  held means it just boosts straight up. This also means boost works after
+  a jump even if you let go of Space and pressed it again later, not only
+  if you held it through continuously.
+- **Jump**: pressing Space while standing still jumps instantly — it
+  doesn't wait to see how long you hold it. That initial hop costs no
+  gauge; holding (or re-pressing) Space afterward rolls into the air boost
+  above.
+- **Ground-dash liftoff**: release Space mid boost-dash, then press it
+  again within a short window, to launch off the ground straight into an
+  air boost.
 - **Inertia**: horizontal velocity is only ever eased toward a target speed
-  (`Vector3.move_toward`), never set directly, and while airborne or right
-  after a dash it bleeds off slowly — momentum carries through jumps and
-  keeps sliding once you let off the boost. The one exception: touching
-  the ground while *not* boosting instantly zeroes horizontal velocity
-  (legs arrest the momentum), whereas landing mid boost-dash keeps sliding.
+  (`Vector3.move_toward`), never set directly, and while airborne it
+  bleeds off slowly — momentum carries through jumps and falls. On the
+  ground, letting go of the movement keys stops you instantly (legs have
+  active control) *unless* you just came out of a boost dash, in which
+  case the leftover momentum eases out instead of snapping to zero.
+  Touching the ground while not boosting also zeroes horizontal velocity
+  instantly, whereas landing mid air-boost keeps the momentum.
 
 All logic lives in `scripts/player.gd`; tunable constants (accel, top
 speeds, gauge drain/regen, timing windows) are at the top of the file.
