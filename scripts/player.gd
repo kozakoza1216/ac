@@ -21,19 +21,19 @@ enum State { NORMAL, BOOST_DASH, AIR_BOOST }
 
 const GRAVITY := 32.0
 
-const WALK_ACCEL := 18.0
+const WALK_ACCEL := 26.0
 const WALK_MAX_SPEED := 10.0
-const AIR_DAMPING := 3.0
+const AIR_DAMPING := 6.0
 
 # Non-boosted air control (falling, or airborne with boost not held) tops
 # out at the same speed as walking, just with its own (slightly less
 # responsive) acceleration -- no gauge needed either way.
-const AIR_CONTROL_ACCEL := 14.0
+const AIR_CONTROL_ACCEL := 22.0
 const AIR_CONTROL_MAX_SPEED := WALK_MAX_SPEED
 
-const BOOST_ACCEL := 58.0
+const BOOST_ACCEL := 75.0
 const BOOST_MAX_SPEED := 24.0
-const BOOST_DAMPING_AFTER_RELEASE := 3.5
+const BOOST_DAMPING_AFTER_RELEASE := 30.0
 
 const JUMP_VELOCITY := 9.0
 
