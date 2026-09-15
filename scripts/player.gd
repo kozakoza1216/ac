@@ -53,12 +53,11 @@ const AIR_BOOST_DRAIN := 60.0
 
 const REBOOST_WINDOW := 0.35
 
-# A fall timer starts counting the moment vertical velocity goes negative
-# (i.e. you start actually descending) and resets whenever you're grounded
-# or moving upward again. Landing on the ground -- not boosting -- while
-# that timer is at or past this threshold means the fall was long enough
-# to count as a hard landing, which locks out input briefly.
-const HARD_LANDING_FALL_TIME := 0.45
+# Hard landings are judged by actual impact speed -- the vertical velocity
+# at the instant you touch down -- not how long you were falling. That way
+# a slow, boost-cushioned descent never staggers even after a long fall,
+# while dropping in fast (whether boosting or not) always does.
+const HARD_LANDING_IMPACT_SPEED := 14.0
 const HARD_LANDING_STAGGER_DURATION := 0.5
 
 const TURN_SPEED := 2.6
@@ -85,7 +84,6 @@ var cam_pitch: float = 0.0
 
 var _t: float = 0.0
 var _boost_prev_held: bool = false
-var _fall_timer: float = 0.0
 var _stagger_timer: float = 0.0
 
 
@@ -206,10 +204,9 @@ func _physics_process(delta: float) -> void:
 	elif velocity.y < 0.0:
 		velocity.y = -1.0
 
-	if not was_on_floor and velocity.y < 0.0:
-		_fall_timer += delta
-	else:
-		_fall_timer = 0.0
+	# Sampled just before the move that might land us, so it reflects the
+	# actual impact speed rather than whatever move_and_slide leaves behind.
+	var impact_velocity_y := velocity.y
 
 	move_and_slide()
 
@@ -226,9 +223,10 @@ func _physics_process(delta: float) -> void:
 				velocity.x = 0.0
 				velocity.z = 0.0
 
-		# A long enough fall staggers the landing regardless of whether
-		# boost happened to be active at touchdown.
-		if _fall_timer >= HARD_LANDING_FALL_TIME:
+		# Coming in fast enough staggers the landing regardless of whether
+		# boost happened to be active at touchdown; a slow, cushioned
+		# descent (even after a long fall) never does.
+		if impact_velocity_y <= -HARD_LANDING_IMPACT_SPEED:
 			_stagger_timer = HARD_LANDING_STAGGER_DURATION
 			velocity.x = 0.0
 			velocity.z = 0.0

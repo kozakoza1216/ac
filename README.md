@@ -51,15 +51,15 @@ The boost button is overloaded, the same way it is in the reference games:
   nets the gauge down, draw below supply (including zero, whenever you're
   not boosting) nets it back up — there's no separate regen delay/cooldown,
   it's just supply minus draw, continuously.
-- **Hard landings stagger you**: a timer starts counting the moment
-  vertical velocity goes negative (you start actually falling) and resets
-  whenever you're grounded or moving upward again. If that timer is past
-  a threshold (`HARD_LANDING_FALL_TIME`) when you touch down, all input
-  locks out for `HARD_LANDING_STAGGER_DURATION` (0.5s) — no movement,
-  turning, camera, or boost, just gravity settling you — regardless of
-  whether boost happened to be active at the moment of touchdown. A
-  normal jump's hang time is short enough to stay under the threshold, so
-  it doesn't trigger this.
+- **Hard landings stagger you**: judged by actual impact speed — the
+  vertical velocity at the instant you touch down — not how long you were
+  falling. If that's at or past `HARD_LANDING_IMPACT_SPEED` (14), all
+  input locks out for `HARD_LANDING_STAGGER_DURATION` (0.5s) — no
+  movement, turning, camera, or boost, just gravity settling you —
+  regardless of whether boost happened to be active at touchdown. A
+  normal jump's landing speed stays under the threshold, so it doesn't
+  trigger this, and neither does a slow, boost-cushioned descent even
+  after a long fall.
 
 All logic lives in `scripts/player.gd`; tunable constants (accel, top
 speeds, gauge supply/draw, timing windows) are at the top of the file.
