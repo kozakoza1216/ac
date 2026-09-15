@@ -53,6 +53,14 @@ const AIR_BOOST_DRAIN := 60.0
 
 const REBOOST_WINDOW := 0.35
 
+# A fall timer starts counting the moment vertical velocity goes negative
+# (i.e. you start actually descending) and resets whenever you're grounded
+# or moving upward again. Landing on the ground -- not boosting -- while
+# that timer is at or past this threshold means the fall was long enough
+# to count as a hard landing, which locks out input briefly.
+const HARD_LANDING_FALL_TIME := 0.45
+const HARD_LANDING_STAGGER_DURATION := 0.5
+
 const TURN_SPEED := 2.6
 const PITCH_SPEED := 1.8
 const PITCH_MIN := -1.05 # ~ -60 deg
@@ -77,10 +85,27 @@ var cam_pitch: float = 0.0
 
 var _t: float = 0.0
 var _boost_prev_held: bool = false
+var _fall_timer: float = 0.0
+var _stagger_timer: float = 0.0
 
 
 func _physics_process(delta: float) -> void:
 	_t += delta
+
+	if _stagger_timer > 0.0:
+		# Hard-landing stagger: no input of any kind, just let gravity
+		# keep settling the body until it wears off.
+		_stagger_timer = maxf(0.0, _stagger_timer - delta)
+		state = State.NORMAL
+		if not is_on_floor():
+			velocity.y -= GRAVITY * delta
+		velocity.x = 0.0
+		velocity.z = 0.0
+		move_and_slide()
+		_boost_prev_held = Input.is_key_pressed(KEY_SPACE)
+		_update_hud()
+		return
+
 	_update_look(delta)
 
 	var move_input := _get_move_input()
@@ -181,17 +206,30 @@ func _physics_process(delta: float) -> void:
 	elif velocity.y < 0.0:
 		velocity.y = -1.0
 
+	if not was_on_floor and velocity.y < 0.0:
+		_fall_timer += delta
+	else:
+		_fall_timer = 0.0
+
 	move_and_slide()
 
-	if is_on_floor() and not was_on_floor and state == State.NORMAL:
-		# Not boosting: momentum is arrested the instant the legs touch
-		# down, instead of bleeding off gradually. If you're already
-		# holding a direction at that instant, skip the inertia ramp-up
-		# entirely and snap straight to walking speed.
-		if has_move_input:
-			velocity.x = move_dir.x * WALK_MAX_SPEED
-			velocity.z = move_dir.z * WALK_MAX_SPEED
-		else:
+	if is_on_floor() and not was_on_floor:
+		if state == State.NORMAL:
+			# Not boosting: momentum is arrested the instant the legs touch
+			# down, instead of bleeding off gradually. If you're already
+			# holding a direction at that instant, skip the inertia
+			# ramp-up entirely and snap straight to walking speed.
+			if has_move_input:
+				velocity.x = move_dir.x * WALK_MAX_SPEED
+				velocity.z = move_dir.z * WALK_MAX_SPEED
+			else:
+				velocity.x = 0.0
+				velocity.z = 0.0
+
+		# A long enough fall staggers the landing regardless of whether
+		# boost happened to be active at touchdown.
+		if _fall_timer >= HARD_LANDING_FALL_TIME:
+			_stagger_timer = HARD_LANDING_STAGGER_DURATION
 			velocity.x = 0.0
 			velocity.z = 0.0
 
@@ -230,6 +268,9 @@ func _update_hud() -> void:
 	if boost_bar:
 		boost_bar.value = boost_gauge
 	if state_label:
+		if _stagger_timer > 0.0:
+			state_label.text = "LANDING STAGGER"
+			return
 		match state:
 			State.NORMAL:
 				state_label.text = "-"
