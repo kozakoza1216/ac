@@ -26,9 +26,8 @@ const WALK_MAX_SPEED := 10.0
 const AIR_DAMPING := 6.0
 
 # Non-boosted air control (falling, or airborne with boost not held) tops
-# out at the same speed as walking, just with its own (slightly less
-# responsive) acceleration -- no gauge needed either way.
-const AIR_CONTROL_ACCEL := 22.0
+# out at the same speed as walking -- no gauge needed either way.
+const AIR_CONTROL_ACCEL := 40.0
 const AIR_CONTROL_MAX_SPEED := WALK_MAX_SPEED
 
 const BOOST_ACCEL := 75.0
