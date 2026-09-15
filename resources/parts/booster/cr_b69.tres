@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BoosterPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/booster_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-B69"
+maker = "クレスト"
+price = 20500
+weight = 200.0
+en_load = 127.0
+thrust = 11270.0
+boost_en_drain = 3534.0
+boost_accel = 3129.0
+boost_heat = 3706.0

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RadiatorPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/radiator_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-R92"
+maker = "クレスト"
+price = 88500
+weight = 520.0
+en_load = 1726.0
+cooling_performance = 11455.0

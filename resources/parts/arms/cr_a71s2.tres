@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ArmsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/arms_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-A71S2"
+maker = "クレスト"
+price = 39500
+ap = 1711
+weight = 1149.0
+en_load = 1123.0
+accuracy = 246.0
+blade_aptitude = 95.0

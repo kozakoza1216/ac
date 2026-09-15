@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="FcsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/fcs_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "MF01-MUREX"
+maker = "ミラージュ"
+price = 29000
+weight = 14.0
+en_load = 14.0
+anti_ecm = 251.0
+sight_type = "標準"
+lock_count = 2
+lock_time = 96.0
+missile_lock_time = 240.0
+max_lock_range = 555.0
+avg_lock_range = 442.0
+parallel_processing = 82.0

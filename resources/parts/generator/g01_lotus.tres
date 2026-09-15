@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GeneratorPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/generator_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "G01-LOTUS"
+maker = "ミラージュ"
+price = 32000
+weight = 309.0
+en_output = 8830.0
+en_capacity = 18500.0
+emergency_capacity = 6000.0
+heat = 2611.0

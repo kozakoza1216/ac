@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CorePart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/core_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-C75U2"
+maker = "クレスト"
+price = 67500
+ap = 2675
+weight = 1090.0
+en_load = 925.0
+real_defense = 535.0
+energy_defense = 411.0
+arm_load_capacity = 3408.0
+cooling = 1110.0
+heat_tolerance = 700.0
+op_slots = 16
+intercept_performance = 55.0
+is_ob_type = false
+ob_output = 0.0

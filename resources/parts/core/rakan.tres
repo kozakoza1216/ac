@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CorePart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/core_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "RAKAN"
+maker = "キサラギ"
+price = 87770
+ap = 2135
+weight = 833.0
+en_load = 1049.0
+real_defense = 401.0
+energy_defense = 477.0
+arm_load_capacity = 3241.0
+cooling = 945.0
+heat_tolerance = 610.0
+op_slots = 19
+intercept_performance = 0.0
+is_ob_type = true
+ob_output = 25740.0

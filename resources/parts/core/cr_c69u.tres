@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CorePart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/core_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-C69U"
+maker = "クレスト"
+price = 61000
+ap = 2187
+weight = 921.0
+en_load = 1094.0
+real_defense = 450.0
+energy_defense = 449.0
+arm_load_capacity = 3441.0
+cooling = 774.0
+heat_tolerance = 590.0
+op_slots = 17
+intercept_performance = 59.0
+is_ob_type = false
+ob_output = 0.0

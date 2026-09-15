@@ -1,0 +1,27 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts_debug.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/builds/starter_loadout.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/builds/balanced_cruiser.tres" id="3"]
+
+[node name="PartsDebug" type="Node"]
+script = ExtResource("1")
+builds = [ExtResource("2"), ExtResource("3")]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="Control" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Output" type="Label" parent="CanvasLayer/Control"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 780.0
+offset_bottom = 820.0
+autowrap_mode = 2
+text = "Loading..."

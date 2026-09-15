@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GeneratorPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/generator_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-G69"
+maker = "クレスト"
+price = 19500
+weight = 381.0
+en_output = 7950.0
+en_capacity = 22000.0
+emergency_capacity = 2800.0
+heat = 2055.0

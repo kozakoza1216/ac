@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="HeadPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/head_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "H01-WASP"
+maker = "ミラージュ"
+price = 40000
+ap = 925
+weight = 228.0
+en_load = 241.0
+real_defense = 179.0
+energy_defense = 141.0
+stability = 305.0
+has_night_vision = true
+has_bio_sensor = false

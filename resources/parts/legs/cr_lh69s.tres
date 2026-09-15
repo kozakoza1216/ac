@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LegsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/legs_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-LH69S"
+maker = "クレスト"
+price = 49600
+leg_type = 0
+ap = 3514
+weight = 2510.0
+load_capacity = 6044.0
+en_load = 1177.0
+real_defense = 608.0
+energy_defense = 447.0
+turning_performance = 114.0
+jump_performance = 95.0

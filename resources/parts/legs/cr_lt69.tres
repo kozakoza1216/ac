@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LegsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/legs_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-LT69"
+maker = "クレスト"
+price = 33000
+leg_type = 3
+ap = 3677
+weight = 3420.0
+load_capacity = 8010.0
+en_load = 1099.0
+real_defense = 863.0
+energy_defense = 408.0
+turning_performance = 0.0
+jump_performance = 0.0

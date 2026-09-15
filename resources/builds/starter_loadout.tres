@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ACBuild" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/ac_build.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/parts/head/cr_h69s.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/parts/core/cr_c69u.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/parts/arms/cr_a69s.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/parts/legs/cr_lh69s.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/parts/fcs/mf01_murex.tres" id="6"]
+[ext_resource type="Resource" path="res://resources/parts/booster/cr_b69.tres" id="7"]
+[ext_resource type="Resource" path="res://resources/parts/generator/cr_g69.tres" id="8"]
+[ext_resource type="Resource" path="res://resources/parts/radiator/cr_r69.tres" id="9"]
+
+[resource]
+script = ExtResource("1")
+build_name = "Starter Loadout"
+head = ExtResource("2")
+core = ExtResource("3")
+arms = ExtResource("4")
+legs = ExtResource("5")
+fcs = ExtResource("6")
+booster = ExtResource("7")
+generator = ExtResource("8")
+radiator = ExtResource("9")

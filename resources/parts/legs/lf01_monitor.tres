@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LegsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/legs_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "LF01-MONITOR"
+maker = "ミラージュ"
+price = 59000
+leg_type = 2
+ap = 2864
+weight = 2137.0
+load_capacity = 5055.0
+en_load = 2605.0
+real_defense = 535.0
+energy_defense = 534.0
+turning_performance = 0.0
+jump_performance = 0.0

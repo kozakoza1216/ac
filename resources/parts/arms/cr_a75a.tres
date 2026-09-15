@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ArmsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/arms_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-A75A"
+maker = "クレスト"
+price = 49800
+ap = 1873
+weight = 1714.0
+en_load = 1271.0
+accuracy = 247.0
+blade_aptitude = 67.0

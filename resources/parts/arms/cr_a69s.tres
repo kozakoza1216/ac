@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ArmsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/arms_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-A69S"
+maker = "クレスト"
+price = 35500
+ap = 1794
+weight = 1290.0
+en_load = 915.0
+accuracy = 251.0
+blade_aptitude = 84.0

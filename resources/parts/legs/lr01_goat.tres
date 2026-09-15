@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LegsPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/legs_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "LR01-GOAT"
+maker = "ミラージュ"
+price = 40000
+leg_type = 1
+ap = 3325
+weight = 2216.0
+load_capacity = 5425.0
+en_load = 1418.0
+real_defense = 568.0
+energy_defense = 401.0
+turning_performance = 0.0
+jump_performance = 0.0

@@ -64,5 +64,39 @@ The boost button is overloaded, the same way it is in the reference games:
 All logic lives in `scripts/player.gd`; tunable constants (accel, top
 speeds, gauge supply/draw, timing windows) are at the top of the file.
 
-This is scoped to movement/inertia/boost only for now — no weapons, enemies,
-or stages yet.
+## Parts system
+
+A first pass at frame parts, not yet wired into the player controller's
+movement stats above (that's the next step once the system itself is
+proven out).
+
+- `scripts/parts/*.gd`: one `Resource` subclass per part category --
+  `HeadPart`, `CorePart`, `ArmsPart`, `LegsPart` (with a `LegType` enum:
+  biped/reverse-joint/quad/tank), `FcsPart`, `BoosterPart`,
+  `GeneratorPart`, `RadiatorPart`. Fields match the stat columns from the
+  source reference (Armored Core Last Raven's part data); where the
+  source lists a paired NX/LR value, the first figure is used.
+- `resources/parts/<category>/*.tres`: a handful of real parts per
+  category (3-4 each, one of every leg type) transcribed from that
+  reference, enough to exercise the system without transcribing the
+  entire multi-hundred-part list up front.
+- `scripts/ac_build.gd` (`ACBuild`): one of each part assembled into a
+  machine, plus the derived totals: `total_ap()`, `carried_weight()` /
+  `load_ratio()` (everything except the legs, checked against the legs'
+  load capacity), `total_en_consumption()` / `en_balance()` (against the
+  generator's output), and `total_heat()` / `is_overheating()` (generator
+  heat + booster heat, doubled, checked against the radiator's cooling --
+  the source material's own documented rule of thumb). `validate()`
+  returns a list of problems (missing part, overweight, EN deficit,
+  overheating), or an empty array if the build is viable.
+- `resources/builds/*.tres`: two example `ACBuild`s. `starter_loadout`
+  (the cheapest part in each category) deliberately fails `validate()`
+  with an overheat warning; `balanced_cruiser` swaps in a
+  higher-cooling radiator and passes clean, showing the same check
+  catching a real problem and then confirming the fix.
+- `scenes/PartsDebug.tscn`: open and run it (F6) to print both builds'
+  computed stats to the console and an on-screen label.
+
+This is scoped to movement/inertia/boost + the parts data model for now —
+no weapons, enemies, stages, or an equip UI yet, and the parts don't
+affect player movement in-game yet either.

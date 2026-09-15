@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="GeneratorPart" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/parts/generator_part.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+part_name = "CR-G78"
+maker = "クレスト"
+price = 25500
+weight = 355.0
+en_output = 8280.0
+en_capacity = 36000.0
+emergency_capacity = 1500.0
+heat = 2432.0
