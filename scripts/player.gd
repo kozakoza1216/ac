@@ -16,8 +16,22 @@ extends CharacterBody3D
 ##       time -- boost dash and boost jump combined into one air boost
 ##     - release boost mid ground-dash, then press it again within a
 ##       short window, to launch off the ground into an air boost
+##   B              : Overed Boost (OB) -- only with an OB-type core
+##     equipped. Press once to start a 1s charge (a charge effect shows
+##     on the HUD during that window; you can still move normally, but
+##     boosting while charging generates heat as though OB and boost
+##     were already running together). Once charged, OB is active: it
+##     multiplies whatever movement you're doing, requires you to keep
+##     giving movement input the whole time (it stops the moment you
+##     don't), and drains its own EN and generates its own heat,
+##     tracked separately from the normal boost dash/air-boost cost.
+##     Press B again (or stop moving) to end it -- on the ground this
+##     brakes to a stop (no input accepted until the brake finishes,
+##     faster with better leg brake performance) rather than snapping
+##     to zero; in the air it just ends.
 
 enum State { NORMAL, BOOST_DASH, AIR_BOOST }
+enum ObState { INACTIVE, CHARGING, ACTIVE, BRAKING }
 
 const GRAVITY := 32.0
 
@@ -42,10 +56,11 @@ const AIR_BOOST_VERTICAL_MAX_SPEED := 16.0
 const BOOST_GAUGE_MAX := 100.0
 
 # Generator model: the gauge is a buffer between a constant generator
-# supply and whatever the boosters are actively drawing. Supply is always
-# being added; when a booster's draw is higher than the supply, the gauge
-# nets down, and the moment draw drops (partially or to zero) it nets back
-# up again -- no separate "regen delay" state needed.
+# supply and whatever the boosters (and OB, see below) are actively
+# drawing. Supply is always being added; when total draw is higher than
+# the supply, the gauge nets down, and the moment draw drops (partially
+# or to zero) it nets back up again -- no separate "regen delay" state
+# needed. Overheating (see below) suspends the supply term entirely.
 const BOOST_SUPPLY := 24.0
 const BOOST_DASH_DRAIN := 52.0
 const AIR_BOOST_DRAIN := 60.0
@@ -64,12 +79,29 @@ const PITCH_SPEED := 1.8
 const PITCH_MIN := -1.05 # ~ -60 deg
 const PITCH_MAX := 0.87 # ~ 50 deg
 
+# Overed Boost: charge time is fixed regardless of parts; the speed/accel
+# multipliers stack on top of whatever movement mode is currently active
+# (walk/air-control/boost-dash/air-boost) rather than replacing it.
+const OB_CHARGE_TIME := 1.0
+const OB_SPEED_MULTIPLIER := 2.5
+const OB_ACCEL_MULTIPLIER := 1.8
+
+@export var core_part: CorePart
+@export var legs_part: LegsPart
+@export var booster_part: BoosterPart
+@export var radiator_part: RadiatorPart
+
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var boost_bar: ProgressBar = get_node_or_null("%BoostBar")
+@onready var heat_bar: ProgressBar = get_node_or_null("%HeatBar")
+@onready var ob_charge_bar: ProgressBar = get_node_or_null("%ObChargeBar")
 @onready var state_label: Label = get_node_or_null("%StateLabel")
 
 var state: int = State.NORMAL
+var ob_state: int = ObState.INACTIVE
 var boost_gauge: float = BOOST_GAUGE_MAX
+var heat: float = 0.0
+var is_overheating: bool = false
 
 var awaiting_reboost: bool = false
 var reboost_deadline: float = -1.0
@@ -80,9 +112,11 @@ var reboost_deadline: float = -1.0
 var _coasting_from_dash: bool = false
 
 var cam_pitch: float = 0.0
+var ob_charge_timer: float = 0.0
 
 var _t: float = 0.0
 var _boost_prev_held: bool = false
+var _ob_prev_held: bool = false
 var _stagger_timer: float = 0.0
 
 
@@ -91,15 +125,38 @@ func _physics_process(delta: float) -> void:
 
 	if _stagger_timer > 0.0:
 		# Hard-landing stagger: no input of any kind, just let gravity
-		# keep settling the body until it wears off.
+		# keep settling the body until it wears off. OB is cancelled
+		# outright rather than left charging/active through a stagger.
 		_stagger_timer = maxf(0.0, _stagger_timer - delta)
 		state = State.NORMAL
+		ob_state = ObState.INACTIVE
 		if not is_on_floor():
 			velocity.y -= GRAVITY * delta
 		velocity.x = 0.0
 		velocity.z = 0.0
 		move_and_slide()
 		_boost_prev_held = Input.is_key_pressed(KEY_SPACE)
+		_ob_prev_held = Input.is_key_pressed(KEY_B)
+		_update_hud()
+		return
+
+	if ob_state == ObState.BRAKING:
+		# Grounded-only: no input accepted until the brake finishes.
+		var brake_rate: float = legs_part.brake_performance if legs_part else 20.0
+		var braking_h := Vector3(velocity.x, 0.0, velocity.z)
+		braking_h = braking_h.move_toward(Vector3.ZERO, brake_rate * delta)
+		velocity.x = braking_h.x
+		velocity.z = braking_h.z
+		if not is_on_floor():
+			velocity.y -= GRAVITY * delta
+		elif velocity.y < 0.0:
+			velocity.y = -1.0
+		move_and_slide()
+		if braking_h.length() < 0.05:
+			ob_state = ObState.INACTIVE
+		state = State.NORMAL
+		_boost_prev_held = Input.is_key_pressed(KEY_SPACE)
+		_ob_prev_held = Input.is_key_pressed(KEY_B)
 		_update_hud()
 		return
 
@@ -117,6 +174,37 @@ func _physics_process(delta: float) -> void:
 
 	var was_on_floor := is_on_floor()
 	var h_velocity := Vector3(velocity.x, 0.0, velocity.z)
+
+	# --- Overed Boost: trigger, charge, and the "must keep moving" rule ---
+	var ob_pressed := Input.is_key_pressed(KEY_B)
+	var ob_just_pressed := ob_pressed and not _ob_prev_held
+	var ob_available := core_part != null and core_part.is_ob_type
+
+	if ob_just_pressed:
+		match ob_state:
+			ObState.INACTIVE:
+				if ob_available:
+					ob_state = ObState.CHARGING
+					ob_charge_timer = 0.0
+			ObState.CHARGING:
+				ob_state = ObState.INACTIVE
+			ObState.ACTIVE:
+				ob_state = ObState.BRAKING if was_on_floor else ObState.INACTIVE
+			ObState.BRAKING:
+				pass
+
+	if ob_state == ObState.CHARGING:
+		ob_charge_timer += delta
+		if ob_charge_timer >= OB_CHARGE_TIME:
+			ob_state = ObState.ACTIVE
+	elif ob_state == ObState.ACTIVE and (not has_move_input or boost_gauge <= 0.0):
+		# OB demands continuous movement and running out of EN ends it
+		# the same way pressing the button again would.
+		ob_state = ObState.BRAKING if was_on_floor else ObState.INACTIVE
+
+	var ob_active := ob_state == ObState.ACTIVE
+	var ob_speed_mult := OB_SPEED_MULTIPLIER if ob_active else 1.0
+	var ob_accel_mult := OB_ACCEL_MULTIPLIER if ob_active else 1.0
 
 	# Free jump: a press while standing still on the ground always fires
 	# immediately, no gauge cost. Whatever happens with boost afterward
@@ -161,7 +249,7 @@ func _physics_process(delta: float) -> void:
 		State.NORMAL:
 			if was_on_floor:
 				if has_move_input:
-					h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED, WALK_ACCEL * delta)
+					h_velocity = h_velocity.move_toward(move_dir * WALK_MAX_SPEED * ob_speed_mult, WALK_ACCEL * ob_accel_mult * delta)
 					_coasting_from_dash = false
 				elif _coasting_from_dash:
 					# Still bleeding off momentum from a boost dash that
@@ -174,26 +262,58 @@ func _physics_process(delta: float) -> void:
 					h_velocity = Vector3.ZERO
 			else:
 				if has_move_input:
-					h_velocity = h_velocity.move_toward(move_dir * AIR_CONTROL_MAX_SPEED, AIR_CONTROL_ACCEL * delta)
+					h_velocity = h_velocity.move_toward(move_dir * AIR_CONTROL_MAX_SPEED * ob_speed_mult, AIR_CONTROL_ACCEL * ob_accel_mult * delta)
 				else:
 					h_velocity = h_velocity.move_toward(Vector3.ZERO, AIR_DAMPING * delta)
 
 		State.BOOST_DASH:
-			h_velocity = h_velocity.move_toward(move_dir * BOOST_MAX_SPEED, BOOST_ACCEL * delta)
+			h_velocity = h_velocity.move_toward(move_dir * BOOST_MAX_SPEED * ob_speed_mult, BOOST_ACCEL * ob_accel_mult * delta)
 			boost_draw = BOOST_DASH_DRAIN
 
 		State.AIR_BOOST:
 			# Boost dash and boost jump combined: always thrust upward,
 			# and also thrust toward the movement input if there is any.
 			velocity.y = minf(velocity.y + AIR_BOOST_VERTICAL_ACCEL * delta, AIR_BOOST_VERTICAL_MAX_SPEED)
-			var h_target := move_dir * BOOST_MAX_SPEED if has_move_input else Vector3.ZERO
-			h_velocity = h_velocity.move_toward(h_target, BOOST_ACCEL * delta)
+			var h_target := move_dir * BOOST_MAX_SPEED * ob_speed_mult if has_move_input else Vector3.ZERO
+			h_velocity = h_velocity.move_toward(h_target, BOOST_ACCEL * ob_accel_mult * delta)
 			boost_draw = AIR_BOOST_DRAIN
 
-	# Generator supply vs. booster draw, applied continuously regardless of
-	# state -- draw above supply nets the gauge down, draw below (or zero)
-	# nets it back up.
-	boost_gauge = clampf(boost_gauge + (BOOST_SUPPLY - boost_draw) * delta, 0.0, BOOST_GAUGE_MAX)
+	# --- Overed Boost EN draw and heat, tracked apart from the booster's ---
+	var boost_heat_rate := 0.0
+	if (state == State.BOOST_DASH or state == State.AIR_BOOST) and booster_part:
+		boost_heat_rate = booster_part.boost_heat
+
+	var ob_heat_rate := 0.0
+	var ob_en_draw := 0.0
+	if ob_available:
+		if ob_state == ObState.ACTIVE:
+			ob_heat_rate = core_part.ob_heat
+			ob_en_draw = core_part.ob_en_drain
+		elif ob_state == ObState.CHARGING and boost_heat_rate > 0.0:
+			# Charging while boosting generates heat as though OB were
+			# already fully active alongside the boost (no EN cost yet,
+			# only heat -- OB's own EN only drains once truly active).
+			ob_heat_rate = core_part.ob_heat
+
+	var cooling := radiator_part.cooling_performance if radiator_part else 0.0
+	var heat_threshold := cooling / 2.0
+	var heat_generation := boost_heat_rate + ob_heat_rate
+	if heat_generation > heat_threshold:
+		heat += (heat_generation - heat_threshold) * delta
+	else:
+		heat = maxf(0.0, heat - (heat_threshold - heat_generation) * delta)
+	var heat_max := cooling if cooling > 0.0 else 1.0
+	heat = minf(heat, heat_max)
+	is_overheating = heat >= heat_max
+
+	# Generator supply vs. total draw (booster + OB, summed here but
+	# computed above as separate named rates). Overheating suspends the
+	# supply term entirely -- draw still applies, nothing regenerates.
+	var total_draw := boost_draw + ob_en_draw
+	if is_overheating:
+		boost_gauge = clampf(boost_gauge - total_draw * delta, 0.0, BOOST_GAUGE_MAX)
+	else:
+		boost_gauge = clampf(boost_gauge + (BOOST_SUPPLY - total_draw) * delta, 0.0, BOOST_GAUGE_MAX)
 
 	velocity.x = h_velocity.x
 	velocity.z = h_velocity.z
@@ -231,6 +351,7 @@ func _physics_process(delta: float) -> void:
 			velocity.z = 0.0
 
 	_boost_prev_held = boost_held
+	_ob_prev_held = ob_pressed
 	_update_hud()
 
 
@@ -264,14 +385,33 @@ func _update_look(delta: float) -> void:
 func _update_hud() -> void:
 	if boost_bar:
 		boost_bar.value = boost_gauge
+	if heat_bar:
+		var cooling := radiator_part.cooling_performance if radiator_part else 1.0
+		heat_bar.max_value = maxf(1.0, cooling)
+		heat_bar.value = heat
+	if ob_charge_bar:
+		ob_charge_bar.visible = ob_state == ObState.CHARGING
+		if ob_charge_bar.visible:
+			ob_charge_bar.value = clampf(ob_charge_timer / OB_CHARGE_TIME, 0.0, 1.0) * 100.0
 	if state_label:
 		if _stagger_timer > 0.0:
 			state_label.text = "LANDING STAGGER"
 			return
+		var text := ""
 		match state:
 			State.NORMAL:
-				state_label.text = "-"
+				text = "-"
 			State.BOOST_DASH:
-				state_label.text = "BOOST DASH"
+				text = "BOOST DASH"
 			State.AIR_BOOST:
-				state_label.text = "AIR BOOST"
+				text = "AIR BOOST"
+		match ob_state:
+			ObState.CHARGING:
+				text += " | OB CHARGING"
+			ObState.ACTIVE:
+				text += " | OB ACTIVE"
+			ObState.BRAKING:
+				text += " | OB BRAKING"
+		if is_overheating:
+			text += " | OVERHEAT"
+		state_label.text = text

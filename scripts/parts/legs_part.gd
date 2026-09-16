@@ -21,3 +21,9 @@ enum LegType { BIPED, REVERSE_JOINT, QUAD, TANK }
 @export var energy_defense: float = 0.0
 @export var turning_performance: float = 0.0
 @export var jump_performance: float = 0.0
+
+## Ground deceleration (units/s^2) used to brake out of Overed Boost.
+## Not part of the source parts table -- an original stat added for
+## that mechanic, roughly themed by leg type (wide/stable footing
+## brakes harder; reverse-joint's poor stability brakes worst).
+@export var brake_performance: float = 20.0

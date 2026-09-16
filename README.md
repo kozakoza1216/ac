@@ -11,6 +11,7 @@ Godot 4 (4.3+) project. Open `project.godot` in the Godot editor and run
 | Left / Right | Turn body (yaw) |
 | Up / Down | Look camera up / down (pitch) |
 | Space | Boost button (see below) |
+| B | Overed Boost, OB-type core only (see below) |
 
 The boost button is overloaded, the same way it is in the reference games:
 
@@ -61,14 +62,43 @@ The boost button is overloaded, the same way it is in the reference games:
   trigger this, and neither does a slow, boost-cushioned descent even
   after a long fall.
 
+- **Overed Boost (B, OB-core only)**: a separate, far stronger speed
+  multiplier on top of whatever you're currently doing (walking,
+  air-control, boost dash, air boost), gated on the equipped core being
+  an OB type (`CorePart.is_ob_type`). Press B to start a fixed 1s charge
+  (`OB_CHARGE_TIME`) — an "OB CHARGE" bar shows on the HUD, and you can
+  move normally during it, but boosting (Space) while charging generates
+  heat as if OB and boost were already running together (see heat,
+  below), even though the speed boost itself hasn't kicked in yet. Once
+  charged, OB multiplies your current move speed and accel
+  (`OB_SPEED_MULTIPLIER` / `OB_ACCEL_MULTIPLIER`) and requires you to
+  keep giving movement input the entire time — no input, or running out
+  of EN, ends it exactly like pressing B again would. Ending it in the
+  air just stops; ending it on the ground brakes to a stop first (no
+  input accepted until the brake finishes), at a rate set by the
+  equipped legs' `brake_performance`.
+- **Heat**: OB (and boosting while OB is charging) generates heat,
+  tracked apart from — but drawing on the same underlying gauge as —
+  the normal boost dash/air-boost EN cost, per how much was asked for
+  each. Heat above half the equipped radiator's `cooling_performance`
+  accumulates; at or below it, stored heat drains back down. If heat
+  reaches the radiator's full cooling value, the build is overheating —
+  the boost gauge's generator supply stops entirely (draw still applies)
+  until it cools back off, mirroring the source material's own
+  documented heat rule (`(generator heat + booster heat) * 2 <=
+  cooling`, generalized here to also include OB's heat).
+
 All logic lives in `scripts/player.gd`; tunable constants (accel, top
 speeds, gauge supply/draw, timing windows) are at the top of the file.
 
 ## Parts system
 
-A first pass at frame parts, not yet wired into the player controller's
-movement stats above (that's the next step once the system itself is
-proven out).
+A first pass at frame parts. The player now references a `CorePart`,
+`LegsPart`, `BoosterPart` and `RadiatorPart` directly (set on the `Player`
+node in `scenes/Main.tscn`, defaulting to RAKAN/CR-LH69S/CR-B69/CR-R92) to
+drive Overed Boost, its heat, and ground braking — but the parts don't
+affect ordinary walking/boost-dash/air-boost speed yet, that's still the
+hardcoded constants above.
 
 - `scripts/parts/*.gd`: one `Resource` subclass per part category --
   `HeadPart`, `CorePart`, `ArmsPart`, `LegsPart` (with a `LegType` enum:
@@ -97,6 +127,7 @@ proven out).
 - `scenes/PartsDebug.tscn`: open and run it (F6) to print both builds'
   computed stats to the console and an on-screen label.
 
-This is scoped to movement/inertia/boost + the parts data model for now —
-no weapons, enemies, stages, or an equip UI yet, and the parts don't
-affect player movement in-game yet either.
+This is scoped to movement/inertia/boost/OB + the parts data model for
+now — no weapons, enemies, stages, or an equip UI yet, and most parts
+(head/arms/FCS/generator, and non-OB stats on the rest) still don't
+affect player movement in-game.

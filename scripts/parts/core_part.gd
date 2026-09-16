@@ -22,3 +22,10 @@ class_name CorePart
 
 @export var is_ob_type: bool = false
 @export var ob_output: float = 0.0
+## EN drained per second while Overed Boost is actually active.
+@export var ob_en_drain: float = 0.0
+## Heat generated per second while Overed Boost is active (also applied
+## while charging if boost is used at the same time). The source table's
+## heat column wasn't fully captured for every OB core, so this is an
+## estimate for cores where noted.
+@export var ob_heat: float = 0.0

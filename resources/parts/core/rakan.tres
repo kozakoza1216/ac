@@ -19,3 +19,5 @@ op_slots = 19
 intercept_performance = 0.0
 is_ob_type = true
 ob_output = 25740.0
+ob_en_drain = 789.0
+ob_heat = 4500.0

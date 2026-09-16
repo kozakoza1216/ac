@@ -1,6 +1,10 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/parts/core/rakan.tres" id="10"]
+[ext_resource type="Resource" path="res://resources/parts/legs/cr_lh69s.tres" id="11"]
+[ext_resource type="Resource" path="res://resources/parts/booster/cr_b69.tres" id="13"]
+[ext_resource type="Resource" path="res://resources/parts/radiator/cr_r92.tres" id="14"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(60, 1, 60)
@@ -111,6 +115,10 @@ shape = SubResource("BoxShape3D_obstacle")
 [node name="Player" type="CharacterBody3D" parent="."]
 position = Vector3(0, 1, 0)
 script = ExtResource("1")
+core_part = ExtResource("10")
+legs_part = ExtResource("11")
+booster_part = ExtResource("13")
+radiator_part = ExtResource("14")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Player"]
 mesh = SubResource("CapsuleMesh_player")
@@ -156,13 +164,52 @@ max_value = 100.0
 value = 100.0
 show_percentage = false
 
+[node name="HeatLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 56.0
+offset_right = 200.0
+offset_bottom = 76.0
+text = "HEAT"
+
+[node name="HeatBar" type="ProgressBar" parent="HUD/Control"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 24.0
+offset_top = 78.0
+offset_right = 324.0
+offset_bottom = 98.0
+max_value = 1.0
+value = 0.0
+show_percentage = false
+
+[node name="ObChargeLabel" type="Label" parent="HUD/Control"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 108.0
+offset_right = 220.0
+offset_bottom = 128.0
+text = "OB CHARGE"
+
+[node name="ObChargeBar" type="ProgressBar" parent="HUD/Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 24.0
+offset_top = 130.0
+offset_right = 324.0
+offset_bottom = 150.0
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
 [node name="StateLabel" type="Label" parent="HUD/Control"]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 24.0
-offset_top = 52.0
-offset_right = 300.0
-offset_bottom = 74.0
+offset_top = 160.0
+offset_right = 460.0
+offset_bottom = 182.0
 text = "-"
 
 [node name="InfoLabel" type="Label" parent="HUD/Control"]
@@ -170,5 +217,5 @@ layout_mode = 0
 offset_left = 24.0
 offset_top = 560.0
 offset_right = 620.0
-offset_bottom = 700.0
-text = "W/A/S/D: move    Left/Right: turn    Up/Down: look\nSpace (hold while moving on ground): boost dash\nSpace (press while standing still): jump (free)\nWhile airborne, hold Space: air boost (dash + jump combined)\nRelease during dash, then re-press quickly: launch into an air boost"
+offset_bottom = 760.0
+text = "W/A/S/D: move    Left/Right: turn    Up/Down: look\nSpace (hold while moving on ground): boost dash\nSpace (press while standing still): jump (free)\nWhile airborne, hold Space: air boost (dash + jump combined)\nRelease during dash, then re-press quickly: launch into an air boost\nB: Overed Boost (OB-core only) -- 1s charge, then multiplies your\ncurrent movement as long as you keep moving. B again (or stopping)\nends it; on the ground that means braking to a halt first."

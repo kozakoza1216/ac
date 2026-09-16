@@ -16,3 +16,4 @@ real_defense = 608.0
 energy_defense = 447.0
 turning_performance = 114.0
 jump_performance = 95.0
+brake_performance = 24.0
