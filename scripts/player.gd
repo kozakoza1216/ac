@@ -113,6 +113,11 @@ var boost_gauge: float = BOOST_GAUGE_MAX
 var temperature: float = 0.0
 var is_overheating: bool = false
 
+# Once the gauge hits empty, every EN-consuming action (boost dash, air
+# boost, OB) is locked out until it's back to completely full -- not just
+# "above zero" again. Walking and the free jump are unaffected either way.
+var _en_depleted: bool = false
+
 var awaiting_reboost: bool = false
 var reboost_deadline: float = -1.0
 
@@ -210,7 +215,7 @@ func _physics_process(delta: float) -> void:
 	if ob_just_pressed:
 		match ob_state:
 			ObState.INACTIVE:
-				if ob_available:
+				if ob_available and not _en_depleted:
 					ob_state = ObState.CHARGING
 					ob_charge_timer = 0.0
 			ObState.CHARGING:
@@ -223,8 +228,10 @@ func _physics_process(delta: float) -> void:
 	if ob_state == ObState.CHARGING:
 		ob_charge_timer += delta
 		if ob_charge_timer >= OB_CHARGE_TIME:
-			ob_state = ObState.ACTIVE
-	elif ob_state == ObState.ACTIVE and (not has_move_input or boost_gauge <= 0.0):
+			# If boosting during the charge drained the gauge to empty,
+			# the charge fizzles instead of engaging with no EN to draw.
+			ob_state = ObState.ACTIVE if not _en_depleted else ObState.INACTIVE
+	elif ob_state == ObState.ACTIVE and (not has_move_input or _en_depleted):
 		# OB demands continuous movement and running out of EN ends it
 		# the same way pressing the button again would.
 		ob_state = ObState.BRAKING if was_on_floor else ObState.INACTIVE
@@ -245,7 +252,7 @@ func _physics_process(delta: float) -> void:
 	if awaiting_reboost:
 		if boost_just_pressed:
 			awaiting_reboost = false
-			if _t <= reboost_deadline and boost_gauge > 0.0 and was_on_floor:
+			if _t <= reboost_deadline and boost_gauge > 0.0 and not _en_depleted and was_on_floor:
 				velocity.y = JUMP_VELOCITY
 		elif _t > reboost_deadline:
 			awaiting_reboost = false
@@ -255,7 +262,7 @@ func _physics_process(delta: float) -> void:
 	# up airborne (jumped, dashed off a ledge, fell, pressed boost again
 	# after already letting go of it once).
 	if was_on_floor:
-		if has_move_input and boost_held and boost_gauge > 0.0:
+		if has_move_input and boost_held and boost_gauge > 0.0 and not _en_depleted:
 			state = State.BOOST_DASH
 		else:
 			if state == State.BOOST_DASH:
@@ -265,7 +272,7 @@ func _physics_process(delta: float) -> void:
 				_coasting_from_dash = true
 			state = State.NORMAL
 	else:
-		if boost_held and boost_gauge > 0.0:
+		if boost_held and boost_gauge > 0.0 and not _en_depleted:
 			state = State.AIR_BOOST
 		else:
 			state = State.NORMAL
@@ -346,12 +353,20 @@ func _physics_process(delta: float) -> void:
 	else:
 		boost_gauge = clampf(boost_gauge + (BOOST_SUPPLY - total_draw) * delta, 0.0, BOOST_GAUGE_MAX)
 
+	# Hitting empty locks out every EN-consuming action until the gauge
+	# is completely full again, not just above zero.
+	if boost_gauge <= 0.0:
+		_en_depleted = true
+	elif boost_gauge >= BOOST_GAUGE_MAX:
+		_en_depleted = false
+
 	if temperature >= MELTDOWN_TEMPERATURE:
 		# Thermal runaway: emergency shutdown starting next frame (see
 		# the _meltdown_timer check at the top of this function).
 		_meltdown_timer = MELTDOWN_LOCKOUT_DURATION
 		temperature = MELTDOWN_TEMPERATURE_RESET
 		boost_gauge = 0.0
+		_en_depleted = true
 		ob_state = ObState.INACTIVE
 		h_velocity = Vector3.ZERO
 
@@ -458,4 +473,6 @@ func _update_hud() -> void:
 				text += " | OB BRAKING"
 		if is_overheating:
 			text += " | OVERHEAT"
+		if _en_depleted:
+			text += " | EN DEPLETED"
 		state_label.text = text

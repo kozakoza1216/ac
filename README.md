@@ -51,7 +51,10 @@ The boost button is overloaded, the same way it is in the reference games:
   draw from it whenever boost-dashing or air-boosting. Draw above supply
   nets the gauge down, draw below supply (including zero, whenever you're
   not boosting) nets it back up — there's no separate regen delay/cooldown,
-  it's just supply minus draw, continuously.
+  it's just supply minus draw, continuously. Running it all the way to
+  empty locks out every EN-consuming action — boost dash, air boost, OB —
+  until the gauge is completely full again, not just above zero; walking
+  and the free jump are unaffected either way.
 - **Hard landings stagger you**: judged by actual impact speed — the
   vertical velocity at the instant you touch down — not how long you were
   falling. If that's at or past `HARD_LANDING_IMPACT_SPEED` (14), all
