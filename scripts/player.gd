@@ -86,6 +86,15 @@ const OB_CHARGE_TIME := 1.0
 const OB_SPEED_MULTIPLIER := 2.5
 const OB_ACCEL_MULTIPLIER := 1.8
 
+# Temperature: heat generation in excess of what the radiator can shed
+# (see is_overheating below) converts to a °C/s rise via this divisor;
+# below that threshold it drains back toward 0 at the same rate. Hitting
+# MELTDOWN_TEMPERATURE forces an emergency shutdown.
+const TEMP_SCALE := 18.0
+const MELTDOWN_TEMPERATURE := 1000.0
+const MELTDOWN_LOCKOUT_DURATION := 1.5
+const MELTDOWN_TEMPERATURE_RESET := 700.0
+
 @export var core_part: CorePart
 @export var legs_part: LegsPart
 @export var booster_part: BoosterPart
@@ -94,13 +103,14 @@ const OB_ACCEL_MULTIPLIER := 1.8
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var boost_bar: ProgressBar = get_node_or_null("%BoostBar")
 @onready var heat_bar: ProgressBar = get_node_or_null("%HeatBar")
+@onready var heat_label: Label = get_node_or_null("%HeatLabel")
 @onready var ob_charge_bar: ProgressBar = get_node_or_null("%ObChargeBar")
 @onready var state_label: Label = get_node_or_null("%StateLabel")
 
 var state: int = State.NORMAL
 var ob_state: int = ObState.INACTIVE
 var boost_gauge: float = BOOST_GAUGE_MAX
-var heat: float = 0.0
+var temperature: float = 0.0
 var is_overheating: bool = false
 
 var awaiting_reboost: bool = false
@@ -118,10 +128,27 @@ var _t: float = 0.0
 var _boost_prev_held: bool = false
 var _ob_prev_held: bool = false
 var _stagger_timer: float = 0.0
+var _meltdown_timer: float = 0.0
 
 
 func _physics_process(delta: float) -> void:
 	_t += delta
+
+	if _meltdown_timer > 0.0:
+		# Thermal runaway: emergency shutdown, takes priority over
+		# everything else -- no input, EN already dumped, just settle.
+		_meltdown_timer = maxf(0.0, _meltdown_timer - delta)
+		state = State.NORMAL
+		ob_state = ObState.INACTIVE
+		if not is_on_floor():
+			velocity.y -= GRAVITY * delta
+		velocity.x = 0.0
+		velocity.z = 0.0
+		move_and_slide()
+		_boost_prev_held = Input.is_key_pressed(KEY_SPACE)
+		_ob_prev_held = Input.is_key_pressed(KEY_B)
+		_update_hud()
+		return
 
 	if _stagger_timer > 0.0:
 		# Hard-landing stagger: no input of any kind, just let gravity
@@ -295,16 +322,20 @@ func _physics_process(delta: float) -> void:
 			# only heat -- OB's own EN only drains once truly active).
 			ob_heat_rate = core_part.ob_heat
 
+	# is_overheating is instantaneous -- generating more heat right now
+	# than the radiator can shed -- per the source rule that exceeding
+	# (generator heat + booster heat) * 2 <= cooling suspends EN
+	# recovery. Whether or not that's currently true, temperature itself
+	# is a separate accumulated total in degrees C: it climbs while
+	# overheating and drains back toward 0 otherwise.
 	var cooling := radiator_part.cooling_performance if radiator_part else 0.0
 	var heat_threshold := cooling / 2.0
 	var heat_generation := boost_heat_rate + ob_heat_rate
-	if heat_generation > heat_threshold:
-		heat += (heat_generation - heat_threshold) * delta
+	is_overheating = heat_generation > heat_threshold
+	if is_overheating:
+		temperature += (heat_generation - heat_threshold) / TEMP_SCALE * delta
 	else:
-		heat = maxf(0.0, heat - (heat_threshold - heat_generation) * delta)
-	var heat_max := cooling if cooling > 0.0 else 1.0
-	heat = minf(heat, heat_max)
-	is_overheating = heat >= heat_max
+		temperature = maxf(0.0, temperature - (heat_threshold - heat_generation) / TEMP_SCALE * delta)
 
 	# Generator supply vs. total draw (booster + OB, summed here but
 	# computed above as separate named rates). Overheating suspends the
@@ -314,6 +345,15 @@ func _physics_process(delta: float) -> void:
 		boost_gauge = clampf(boost_gauge - total_draw * delta, 0.0, BOOST_GAUGE_MAX)
 	else:
 		boost_gauge = clampf(boost_gauge + (BOOST_SUPPLY - total_draw) * delta, 0.0, BOOST_GAUGE_MAX)
+
+	if temperature >= MELTDOWN_TEMPERATURE:
+		# Thermal runaway: emergency shutdown starting next frame (see
+		# the _meltdown_timer check at the top of this function).
+		_meltdown_timer = MELTDOWN_LOCKOUT_DURATION
+		temperature = MELTDOWN_TEMPERATURE_RESET
+		boost_gauge = 0.0
+		ob_state = ObState.INACTIVE
+		h_velocity = Vector3.ZERO
 
 	velocity.x = h_velocity.x
 	velocity.z = h_velocity.z
@@ -386,14 +426,18 @@ func _update_hud() -> void:
 	if boost_bar:
 		boost_bar.value = boost_gauge
 	if heat_bar:
-		var cooling := radiator_part.cooling_performance if radiator_part else 1.0
-		heat_bar.max_value = maxf(1.0, cooling)
-		heat_bar.value = heat
+		heat_bar.max_value = MELTDOWN_TEMPERATURE
+		heat_bar.value = temperature
+	if heat_label:
+		heat_label.text = "TEMP: %d°C" % int(temperature)
 	if ob_charge_bar:
 		ob_charge_bar.visible = ob_state == ObState.CHARGING
 		if ob_charge_bar.visible:
 			ob_charge_bar.value = clampf(ob_charge_timer / OB_CHARGE_TIME, 0.0, 1.0) * 100.0
 	if state_label:
+		if _meltdown_timer > 0.0:
+			state_label.text = "MELTDOWN (%d°C)" % int(temperature)
+			return
 		if _stagger_timer > 0.0:
 			state_label.text = "LANDING STAGGER"
 			return

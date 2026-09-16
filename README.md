@@ -77,16 +77,23 @@ The boost button is overloaded, the same way it is in the reference games:
   air just stops; ending it on the ground brakes to a stop first (no
   input accepted until the brake finishes), at a rate set by the
   equipped legs' `brake_performance`.
-- **Heat**: OB (and boosting while OB is charging) generates heat,
-  tracked apart from — but drawing on the same underlying gauge as —
-  the normal boost dash/air-boost EN cost, per how much was asked for
-  each. Heat above half the equipped radiator's `cooling_performance`
-  accumulates; at or below it, stored heat drains back down. If heat
-  reaches the radiator's full cooling value, the build is overheating —
-  the boost gauge's generator supply stops entirely (draw still applies)
-  until it cools back off, mirroring the source material's own
-  documented heat rule (`(generator heat + booster heat) * 2 <=
-  cooling`, generalized here to also include OB's heat).
+- **Temperature and thermal runaway**: OB (and boosting while OB is
+  charging) generates heat, tracked apart from — but drawing on the same
+  underlying gauge as — the normal boost dash/air-boost EN cost. Whether
+  you're *currently* generating more heat than the equipped radiator can
+  shed (more than half its `cooling_performance` — the source material's
+  own documented rule, `(generator heat + booster heat) * 2 <= cooling`,
+  generalized here to include OB) is judged instant to instant: while
+  true, the boost gauge's generator supply stops entirely (draw still
+  applies). Any excess also raises an actual temperature in °C, shown on
+  the HUD (`TEMP: n°C` and a bar) — it climbs while overheating and
+  drains back toward 0°C otherwise. Reach `MELTDOWN_TEMPERATURE` (1000°C)
+  and it's thermal runaway: an emergency shutdown that cancels OB, dumps
+  the boost gauge to 0, resets temperature down to 700°C, and locks out
+  all input for `MELTDOWN_LOCKOUT_DURATION` (1.5s). Ordinary boosting
+  alone never gets close to this with the default parts; it's really
+  only a risk from leaning on OB and boost together for several seconds
+  straight.
 
 All logic lives in `scripts/player.gd`; tunable constants (accel, top
 speeds, gauge supply/draw, timing windows) are at the top of the file.

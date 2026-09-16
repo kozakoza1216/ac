@@ -165,12 +165,13 @@ value = 100.0
 show_percentage = false
 
 [node name="HeatLabel" type="Label" parent="HUD/Control"]
+unique_name_in_owner = true
 layout_mode = 0
 offset_left = 24.0
 offset_top = 56.0
-offset_right = 200.0
+offset_right = 240.0
 offset_bottom = 76.0
-text = "HEAT"
+text = "TEMP: 0°C"
 
 [node name="HeatBar" type="ProgressBar" parent="HUD/Control"]
 unique_name_in_owner = true
